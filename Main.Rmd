@@ -1,0 +1,263 @@
+```{r}
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+Austin = read.csv('data/listings_austin.csv')
+# Bangkok = read.csv('data/listings_bangkok.csv')
+# Buenoes = read.csv('data/listings_buenoes_aires.csv')
+# CapeTown  = read.csv('data/listings_cape_town.csv')
+# Istanbul = read.csv('data/listings_istanbul.csv')
+```
+
+```{r}
+glimpse(Austin)
+summary(Austin)
+```
+
+```{r}
+price_top_five <- Austin %>%
+    group_by(latitude , longitude )%>%
+    select(host_name, price, latitude , longitude ) %>%
+    arrange(desc(price))
+
+head(price_top_five, 5)
+tail(price_top_five, 5)
+```
+
+```{r}
+Austin %>%
+    arrange(desc(price)) %>%
+    ggplot(aes(x = longitude, y = latitude, size = price, fill = price, colour = price))+
+        geom_point(alpha=0.5) +
+        facet_grid()
+        scale_size(range = c(.1, 24), name="Population (M)")
+```
+
+
+```{r}
+level_top_five <- Austin %>%
+    group_by(longitude, latitude, price)%>%
+    select(longitude, latitude, price) %>%
+    summarise(house_price_level = cut(price, breaks = c(0, 98, 164, 293.5, 298, 12980, Inf),
+                        labels = c("L1", "L2", "L3", "L4", "L5", "L6")))
+
+head(level_top_five, 5)
+```
+
+```{r}
+colors <- c('#4AC6B7', '#1972A4', '#965F8A', '#FF7070', '#C61951')
+
+fig <- plot_ly(level_top_five, x = ~longitude, y = ~latitude, text = ~price, 
+               type = 'scatter', mode = 'markers', size = ~price, 
+               color = ~house_price_level, colors = 'Paired',
+        marker = list(opacity = 0.5, sizemode = 'diameter'))
+
+fig <- fig %>% layout(title = 'Austin',
+         xaxis = list(showgrid = FALSE),
+         yaxis = list(showgrid = FALSE),
+         showlegend = FALSE)
+
+fig
+```
+
+```{r}
+library(tidyr)
+# 長條圖
+install.packages("kableExtra")
+# Libraries
+library(tidyverse)
+library(hrbrthemes)
+library(kableExtra)
+options(knitr.table.format = "html")
+
+plot_ly(level_top_five, x = ~latitude, color = ~house_price_level, colors = "Accent", type = "histogram")
+```
+
+
+```{r}
+latitude_and_level <- function(level){
+    n_by_level <- level_top_five %>%
+        group_by(latitude, house_price_level) %>%
+        select(latitude, house_price_level) %>%
+        filter(house_price_level == level)
+}
+
+L1 <- latitude_and_level("L1")
+L2 <- latitude_and_level("L2")
+L3 <- latitude_and_level("L3")
+L4 <- latitude_and_level("L4")
+L5 <- latitude_and_level("L5")
+
+fig <- plot_ly(alpha = 0.6)
+fig <- fig %>% add_histogram(x = ~ L1$latitude, color = ~L1$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L2$latitude, color = ~L2$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L3$latitude, color = ~L3$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L4$latitude, color = ~L4$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L5$latitude, color = ~L5$house_price_level)
+fig <- fig %>% layout(barmode = "overlay")
+
+fig
+```
+
+
+
+```{r}
+longitude_and_level <- function(level){
+    n_by_level <- level_top_five %>%
+        group_by(longitude, house_price_level) %>%
+        select(longitude, house_price_level) %>%
+        filter(house_price_level == level)
+    # plot_ly(n_by_level, x = ~homelat, color = ~house_price_level, 
+    #         colors = "Accent", type = "histogram")
+}
+
+L1 <- longitude_and_level("L1")
+L2 <- longitude_and_level("L2")
+L3 <- longitude_and_level("L3")
+L4 <- longitude_and_level("L4")
+L5 <- longitude_and_level("L5")
+
+fig <- plot_ly(alpha = 0.6)
+fig <- fig %>% add_histogram(x = ~ L1$longitude, color = ~L1$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L2$longitude, color = ~L2$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L3$longitude, color = ~L3$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L4$longitude, color = ~L4$house_price_level)
+fig <- fig %>% add_histogram(x = ~ L5$longitude, color = ~L5$house_price_level)
+fig <- fig %>% layout(barmode = "overlay")
+
+fig
+```
+
+
+```{r}
+bnb_name_price <- data.frame(
+    name = Austin$host_name,
+    price = Austin$price,
+    x = c(1:length(Austin$host_name))
+)
+
+fig <- plot_ly(bnb_name_price, x = ~x, y = ~price, type = 'scatter', mode = 'lines')
+fig
+```
+
+```{r}
+result <- bnb_name_price %>%
+    group_by(price) %>%
+    select(name, price) %>%
+    arrange(desc(price))
+
+for(i in c(1:5)){
+    print(sprintf("Name : %s ，Price : %d", result$name[i], result$price[i]))
+}
+print("===========後五筆=============")
+
+for(i in c(11265:11269)){
+    print(sprintf("Name : %s ，Price : %d", result$name[i], result$price[i]))
+    
+}
+```
+
+```{r}
+search_name_price <- function(names){
+    for(i in c(1:11269)){
+        if(grepl(names,c(Austin$name[i]))){
+             print(sprintf("%s , %d, %f, %f", Austin$name[i], Austin$price[i], 
+                           Austin$latitude[i], Austin$longitude[i]))
+        }
+    }
+}
+search_name_price("WanderJaunt")
+```
+
+```{r}
+search_price_range <- function(min, max){
+    bnb_name_price %>%
+        group_by(price) %>%
+        select(name, price) %>%
+        filter(price >= min & price <= max) %>%
+        arrange(price)
+}
+search_price_range(0, 10)
+```
+
+```{r}
+reviews <- Austin %>%
+    group_by(number_of_reviews) %>%
+    select(host_name, number_of_reviews, price) %>%
+    arrange(desc(number_of_reviews))
+
+head(reviews,5)
+```
+
+```{r}
+search_reviews_range <- function(min, max){
+    Austin%>%
+        group_by(number_of_reviews) %>%
+        select(host_name, number_of_reviews, price) %>%
+        filter(number_of_reviews >= min & number_of_reviews <= max) %>%
+        arrange(desc(number_of_reviews))
+}
+search_reviews_range(800, 900)
+```
+
+```{r}
+search_prices_range <- function(min, max, value){
+    plt <- Austin%>%
+            group_by(number_of_reviews) %>%
+            select(host_name, number_of_reviews, price, host_name) %>%
+            filter(price >= min & price <= max & number_of_reviews >= value)
+            # arrange(desc(number_of_reviews))
+    print(plt)
+    
+    plot_ly(plt, x = ~plt$host_name,  y = ~plt$number_of_reviews, type = 'scatter', mode = 'markers')
+}
+search_prices_range(0, 9000, 500)
+```
+
+
+```{r}
+k_meanse <- Austin %>%
+    select(latitude, longitude, price, number_of_reviews)
+
+eu_dist <- dist(k_meanse, method="euclidean")
+eu_dist_hc <- hclust(eu_dist)
+plot(eu_dist_hc, xlab="歐式距離")
+
+manh_dist <- dist(k_meanse, method="manhattan")
+eu_dist_manh <- hclust(manh_dist)
+plot(eu_dist_manh, xlab="曼哈頓距離")
+```
+
+```{r}
+# hclust(manh_dist, method="single")    A
+# hclust(manh_dist, method="complete")  B
+# hclust(manh_dist, method="average")   C
+# hclust(manh_dist, method="centroid")  D
+# hclust(manh_dist, method="ward.D2")   E
+```
+
+```{r}
+eu_dist <- dist(k_meanse, method="euclidean")
+eu_dist_hc <- hclust(eu_dist, method="ward.D2")
+plot(eu_dist_hc)
+abline(h=20000, col="red")
+```
+
+```{r}
+data_clustering <- cutree(eu_dist_hc, 4)
+```
+
+```{r}
+kmeans <- kmeans(k_meanse, center = 4)
+install.packages("factoextra")
+require(factoextra)
+fviz_cluster(kmeans,           
+             data = k_meanse,              
+             geom = c("point","text"), 
+             frame.type = "norm") 
+```
+
